@@ -1,22 +1,62 @@
 Roblox AI Trainer
 ==================
 
-## Descrição 🎮🤖📊
-O **Roblox AI Trainer** é um sistema de treinamento e predição baseado em redes neurais, projetado para capturar e interpretar entradas do jogador no jogo *Roblox*. Utiliza *TensorFlow* para criar e treinar um modelo de *deep learning* que aprende a partir das ações do jogador.
+# 🤖 Roblox AI Controller 🎮
 
-## Dependências 🛠️🐍📦
-Este projeto requer as seguintes bibliotecas:
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![TensorFlow 2.4+](https://img.shields.io/badge/TensorFlow-2.4%2B-orange.svg)](https://www.tensorflow.org/install)
+[![OpenCV 4.5+](https://img.shields.io/badge/OpenCV-4.5%2B-green.svg)](https://pypi.org/project/opencv-python/)
+[![PyAutoGUI 0.9+](https://img.shields.io/badge/PyAutoGUI-0.9%2B-yellow.svg)](https://pypi.org/project/PyAutoGUI/)
+[![PyWin32 300+](https://img.shields.io/badge/PyWin32-300%2B-blue.svg)](https://pypi.org/project/pywin32/)
+[![Keyboard 0.13+](https://img.shields.io/badge/Keyboard-0.13%2B-orange.svg)](https://pypi.org/project/keyboard/)
+[![Mouse 0.7+](https://img.shields.io/badge/Mouse-0.7%2B-green.svg)](https://pypi.org/project/mouse/)
+[![Matplotlib 3.3+](https://img.shields.io/badge/Matplotlib-3.3%2B-yellow.svg)](https://pypi.org/project/matplotlib/)
+[![Status: Experimental](https://img.shields.io/badge/Status-Experimental-orange.svg)](https://github.com/seuusuario/roblox-ai-controller)
 
-- Python 3
-- TensorFlow
-- OpenCV
-- NumPy
-- PyAutoGUI
-- Win32API (pywin32)
-- Keyboard
-- Mouse
-- Tkinter
-- Matplotlib
+**Uma IA "avançada" para controle automático de personagens no Roblox com aprendizado profundo e recuperação de colisões**
+
+![Interface Preview](screenshots/preview.png)
+
+## 📑 Descrição
+
+Este projeto é um controlador AI inteligente para Roblox que utiliza redes neurais convolucionais (CNN) para aprender e replicar comportamentos de jogo. Com recursos como detecção de colisões, sistema de recuperação automática e interface visual intuitiva, ele permite:
+
+- 🧠 Treinamento do modelo em tempo real
+- 🕹️ Controle automático do personagem
+- 🚨 Sistema anti-travamento
+- 📊 Monitoramento em tempo real das ações
+- 🖥️ Visualização dupla da tela e previsões
+
+## ✨ Funcionalidades Principais
+
+- **Detecção Inteligente de Colisões**
+  - Sistema de recuperação com sequência personalizável
+  - Escape automático de loops de colisão
+- **Modos de Operação**
+  - 🏋️ Modo Treino (coleta dados e treina o modelo)
+  - 🤖 Modo Predict (controle automático do jogo)
+- **Interface Amigável**
+  - Tema escuro moderno
+  - Visualização em tempo real do jogo
+  - Gráfico interativo de previsões
+- **Controles Avançados**
+  - 🚨 Parada de emergência (Ctrl+Shift+L)
+  - Suporte a múltiplos dispositivos de entrada
+  - Smoothing de movimentos do mouse
+- **Gestão de Modelos**
+  - Carregar/Salvar modelos treinados
+  - Monitoramento do treino com gráficos
+  - Auto-salvamento periódico
+
+## Exemplo de plotagem de previsões 📊📈
+![Interface Preview](screenshots/plotexample.png)
+
+## 📋 Pré-requisitos
+
+- Python 3.8 ou superior
+- Janela do Roblox em execução (com título "Roblox")
+- Resolução mínima de tela: 1280x720
+- Espaço em disco: ~5GB (para modelos e datasets)
 
 As dependências podem ser instaladas com:
 ```bash
@@ -55,12 +95,5 @@ O modelo treinado é salvo automaticamente no diretório `models/` e pode ser re
 - Os arquivos de log de treinamento são salvos automaticamente para revisão posterior.
 
 ## Controles Rápidos ⌨️🎮🖱️
-- Pressionar `L` interrompe todas as atividades e fecha o programa.
+- Pressionar `ctrl+shift+l` interrompe todas as atividades e fecha o programa.
 - O botão "Stop" na interface também interrompe o treinamento ou a predição.
-
-## Contribuição 🤝💡🚀
-Sinta-se à vontade para modificar o código, testar novos hiperparâmetros e compartilhar melhorias.
-
-## Licença 📜✅⚖️
-Este projeto é de uso livre e pode ser modificado conforme necessário.
-

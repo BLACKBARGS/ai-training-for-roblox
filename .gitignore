@@ -1,0 +1,5 @@
+/models/
+/plots/
+/temp/
+*.h5
+*.keras
