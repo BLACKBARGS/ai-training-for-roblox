@@ -1,5 +1,6 @@
 /models/
 /plots/
 /temp/
+/.vscode/
 *.h5
 *.keras

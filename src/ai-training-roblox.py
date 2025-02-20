@@ -1,4 +1,3 @@
-# Imports da biblioteca padrão
 import sys
 import os
 import time
@@ -9,7 +8,6 @@ from threading import Thread
 from datetime import datetime
 from PIL import Image, ImageTk
 
-# Imports de terceiros
 import cv2
 import numpy as np
 import pyautogui
@@ -22,19 +20,30 @@ import keyboard
 import mouse
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from dqn_agent import DQNAgent
 
-# Configuração do Matplotlib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Configurações do TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 tf.get_logger().setLevel('ERROR')
-
-# ATIVANDO A EXECUÇÃO EAGER (garante que .numpy() funcione)
 tf.config.run_functions_eagerly(True)
+
+def calculate_reward(self, state, collision):
+        reward = 0
+        if collision:
+            reward -= 10
+            
+        if self.last_frame is not None and state is not None:
+            diff = np.mean(np.abs(state - self.last_frame))
+            reward += diff * 5
+            
+        if not any(self.active_actions):
+            reward -= 0.1
+            
+        return reward
 
 
 class CollisionDetector:
@@ -215,25 +224,6 @@ class RobloxAITrainer:
         self.console = tk.Text(main_frame, height=10, state=tk.DISABLED, bg='#333333', fg='white')
         self.console.pack(fill=tk.BOTH, expand=True)
 
-    def set_dark_theme(self):
-        self.root.configure(bg='#2e2e2e')
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('.', 
-                        background='#2e2e2e', 
-                        foreground='white',
-                        fieldbackground='#3e3e3e',
-                        borderwidth=1)
-
-        style.configure('TButton', 
-                        background='#4e4e4e', 
-                        borderwidth=1,
-                        relief='flat')
-
-        style.map('TButton',
-                  background=[('active', '#5e5e5e')],
-                  relief=[('pressed', 'sunken')])
-
     def log_message(self, message):
         self.console.config(state=tk.NORMAL)
         self.console.insert(tk.END, f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
@@ -295,6 +285,25 @@ class RobloxAITrainer:
         except Exception as e:
             self.log_message(f"Erro na captura: {str(e)}")
             return None
+    
+    def set_dark_theme(self):
+        self.root.configure(bg='#2e2e2e')
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('.', 
+                        background='#2e2e2e', 
+                        foreground='white',
+                        fieldbackground='#3e3e3e',
+                        borderwidth=1)
+
+        style.configure('TButton', 
+                        background='#4e4e4e', 
+                        borderwidth=1,
+                        relief='flat')
+
+        style.map('TButton',
+                  background=[('active', '#5e5e5e')],
+                  relief=[('pressed', 'sunken')])
 
     def get_current_actions(self):
         """
@@ -330,46 +339,96 @@ class RobloxAITrainer:
             actions[-2] = norm_delta_x
             actions[-1] = norm_delta_y
         except Exception as e:
-            actions[-2:] = 0.5  # sem movimento
+            actions[-2:] = 0.5
 
         return actions
 
     def training_worker(self):
         try:
             target_epochs = int(self.epoch_entry.get())
-            buffer = []
+        # Define o modo de treinamento: 'dqn' para DQNAgent ou 'supervised' para treinamento direto
+            mode = getattr(self, 'training_mode', 'supervised')
 
-            while not self.stop_event.is_set() and self.current_total_epochs < target_epochs:
-                frame = self.capture_screen()
-                if frame is not None:
-                    actions = self.get_current_actions()
-                    buffer.append((frame, actions))
+            if mode == 'dqn':
+                episode = 0
+                while not self.stop_event.is_set() and episode < target_epochs:
+                    state = self.capture_screen()
+                    if state is None:
+                        continue
 
-                    if len(buffer) >= self.batch_size:
-                        X = np.array([x[0] for x in buffer])
-                        y = np.array([x[1] for x in buffer])
-                        history = self.model.train_on_batch(X[..., np.newaxis], y)
-                        loss_val = float(history[0])
-                        acc_val = float(history[1])
-                        self.training_history['loss'].append(loss_val)
-                        self.training_history['accuracy'].append(acc_val)
-                        self.current_total_epochs += 1
+                    total_reward = 0
+                    steps = 0
+                    while not self.stop_event.is_set() and steps < 500:
+                        action = self.agent.act(state)
+                        self.execute_actions(action)
+                    
+                        next_state = self.capture_screen()
+                        if next_state is None:
+                            break
 
-                        if self.current_total_epochs % 5 == 0:
-                            self.log_message(f"Época {self.current_total_epochs} - Loss: {loss_val:.4f}")
-                            self.save_training_plot()
-
-                        buffer = []
-
-                self.update_preview(frame)
-                time.sleep(0.05)
-
-            self.save_model("models/roblox_ai_model.h5")
-            self.log_message("Treino concluido e modelo salvo!")
+                        collision = self.collision_detector.update(next_state, self.get_current_actions())
+                        reward = self.calculate_reward(next_state, collision)
+                        self.agent.remember(state, action, reward, next_state, collision)
+                    
+                        if len(self.agent.memory) >= self.agent.batch_size:
+                            loss = self.agent.replay()
+                            if steps % 10 == 0:
+                                self.log_message(f"Episode: {episode}, Step: {steps}, Loss: {loss:.4f}")
+                    
+                        total_reward += reward
+                        state = next_state
+                        steps += 1
+                        self.update_preview(state)
+                    
+                        if collision:
+                            break
+                    
+                        time.sleep(0.05)
+                
+                    self.log_message(f"Episode {episode} finalizado - Reward: {total_reward:.2f}")
+                    episode += 1
+                
+                    if episode % 10 == 0:
+                        self.save_model(f"models/roblox_dqn_model_{episode}")
+            
+                self.log_message("Treinamento DQN concluído!")
+        
+            else:  # Modo 'supervised'
+                buffer = []
+                while not self.stop_event.is_set() and self.current_total_epochs < target_epochs:
+                    frame = self.capture_screen()
+                    if frame is not None:
+                        actions = self.get_current_actions()
+                        buffer.append((frame, actions))
+                    
+                        if len(buffer) >= self.batch_size:
+                            X = np.array([x[0] for x in buffer])
+                            y = np.array([x[1] for x in buffer])
+                            history = self.model.train_on_batch(X[..., np.newaxis], y)
+                            loss_val = float(history[0])
+                            acc_val = float(history[1])
+                            self.training_history['loss'].append(loss_val)
+                            self.training_history['accuracy'].append(acc_val)
+                            self.current_total_epochs += 1
+                        
+                            if self.current_total_epochs % 5 == 0:
+                                self.log_message(f"Época {self.current_total_epochs} - Loss: {loss_val:.4f}")
+                                self.save_training_plot()
+                        
+                            buffer = []
+                
+                    self.update_preview(frame)
+                    time.sleep(0.05)
+            
+                self.save_model("models/roblox_ai_model.h5")
+                self.log_message("Treino supervisionado concluído e modelo salvo!")
+    
         except Exception as e:
             self.log_message(f"Erro no treino: {str(e)}")
+    
         finally:
             self.stop_all()
+
 
     def save_training_plot(self):
         try:
@@ -378,7 +437,6 @@ class RobloxAITrainer:
             plt.plot(self.training_history['accuracy'], label='Accuracy')
             plt.title(f"Progresso do Treino - {datetime.now().strftime('%d/%m %H:%M')}")
             plt.legend()
-
             os.makedirs("plots", exist_ok=True)
             filename = f"plots/training_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             plt.savefig(filename)
@@ -404,7 +462,6 @@ class RobloxAITrainer:
                 if self.last_frame is not None and frame is not None:
                     collision = self.collision_detector.update(frame, self.get_current_actions())
                 self.last_frame = frame.copy() if frame is not None else None
-
                 recovery_action = self.collision_detector.get_recovery_action()
                 if recovery_action:
                     self.execute_recovery_action(recovery_action)
@@ -592,7 +649,6 @@ class RobloxAITrainer:
             self.running = False
             self.cleanup_resources()
             self.root.destroy()
-
 
 if __name__ == "__main__":
     ai_trainer = RobloxAITrainer()
