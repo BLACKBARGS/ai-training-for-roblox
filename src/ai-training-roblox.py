@@ -31,20 +31,6 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 tf.get_logger().setLevel('ERROR')
 tf.config.run_functions_eagerly(True)
 
-def calculate_reward(self, state, collision):
-        reward = 0
-        if collision:
-            reward -= 10
-            
-        if self.last_frame is not None and state is not None:
-            diff = np.mean(np.abs(state - self.last_frame))
-            reward += diff * 5
-            
-        if not any(self.active_actions):
-            reward -= 0.1
-            
-        return reward
-
 
 class CollisionDetector:
     def __init__(self, action_keys, threshold=0.20, stuck_time=4, recovery_sequence=[('w', 0.5), ('space', 0.2), ('mouse_right', 0.1)]):
@@ -125,6 +111,8 @@ class RobloxAITrainer:
         self.valid_mouse_buttons = {'left', 'right', 'middle', 'x', 'x2'}
         self.prediction_plot_path = "temp/prediction_plot.png"
         self.running = False
+        self.training_mode = 'supervised'
+        self.agent = None
 
         self.action_keys = [
             'w', 'a', 's', 'd', 'space', 'shift', 'ctrl',
@@ -134,7 +122,7 @@ class RobloxAITrainer:
             'mouse_middle', 'mouse_x', 'mouse_x2' 
         ]
 
-        self.mouse_axes = 3 
+        self.mouse_axes = 2
         self.total_outputs = len(self.action_keys) + self.mouse_axes
         self.prev_mouse_position = None
         self.max_mouse_delta = 20
@@ -143,6 +131,29 @@ class RobloxAITrainer:
         self.setup_gui()
         keyboard.add_hotkey('ctrl+shift+l', self.emergency_stop)
         atexit.register(self.cleanup_resources)
+
+    def calculate_reward(self, state, collision):
+        reward = 0
+        if collision:
+            reward -= 10
+
+        if self.last_frame is not None and state is not None:
+            diff = np.mean(np.abs(state - self.last_frame))
+            reward += diff * 5
+
+        if not any(self.active_actions):
+            reward -= 0.1
+
+        return reward
+
+    def dqn_action_to_predictions(self, action_index):
+        predictions = np.zeros(self.total_outputs)
+        predictions[-2:] = 0.5
+
+        if 0 <= action_index < len(self.action_keys):
+            predictions[action_index] = 1.0
+
+        return predictions
 
     def init_model(self):
         try:
@@ -350,6 +361,9 @@ class RobloxAITrainer:
             mode = getattr(self, 'training_mode', 'supervised')
 
             if mode == 'dqn':
+                if self.agent is None:
+                    self.agent = DQNAgent((240, 320, 1), len(self.action_keys))
+
                 episode = 0
                 while not self.stop_event.is_set() and episode < target_epochs:
                     state = self.capture_screen()
@@ -360,7 +374,7 @@ class RobloxAITrainer:
                     steps = 0
                     while not self.stop_event.is_set() and steps < 500:
                         action = self.agent.act(state)
-                        self.execute_actions(action)
+                        self.execute_actions(self.dqn_action_to_predictions(action))
                     
                         next_state = self.capture_screen()
                         if next_state is None:
